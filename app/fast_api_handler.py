@@ -16,7 +16,7 @@ class FastApiHandler:
             "model_params": dict
         }
 
-        self.model_path = "models/catboost_churn_model.bin"
+        self.model_path = "../models/catboost_churn_model.bin"
         self.load_churn_model(model_path=self.model_path)
 
         # необходимые параметры для предсказаний модели оттока
