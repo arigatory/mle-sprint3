@@ -1,6 +1,7 @@
+
 """Класс FastApiHandler, который обрабатывает запросы API."""
 
-from catboost import CatBoostRegressor
+from catboost import CatBoostClassifier
 
 
 class FastApiHandler:
@@ -11,41 +12,42 @@ class FastApiHandler:
 
         # типы параметров запроса для проверки
         self.param_types = {
-            "client_id": str,
+            "user_id": str,
             "model_params": dict
         }
 
-        # список необходимых параметров модели
+        self.model_path = "models/catboost_churn_model.bin"
+        self.load_churn_model(model_path=self.model_path)
+
+        # необходимые параметры для предсказаний модели оттока
         self.required_model_params = [
-            "gender", "Type", "PaperlessBilling", "PaymentMethod",
-            "MonthlyCharges", "TotalCharges"
+            'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'Type', 'PaperlessBilling', 'PaymentMethod',
+            'MonthlyCharges', 'TotalCharges', 'MultipleLines', 'InternetService', 'OnlineSecurity',
+            'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies', 'days', 'services'
         ]
 
-        model_path = "../models/catboost_credit_model.bin"
-        self.load_credit_model(model_path=model_path)
-
-    def load_credit_model(self, model_path: str):
-        """Загружаем обученную модель предсказания кредитного рейтинга.
-
-            Args:
+    def load_churn_model(self, model_path: str):
+        """Загружаем обученную модель оттока.
+        Args:
             model_path (str): Путь до модели.
         """
         try:
-            self.model = CatBoostRegressor()
+            self.model = CatBoostClassifier()
             self.model.load_model(model_path)
         except Exception as e:
             print(f"Failed to load model: {e}")
 
-    def credit_rating_predict(self, model_params: dict) -> float:
-        """Предсказываем кредитный рейтинг.
+    def churn_predict(self, model_params: dict) -> float:
+        """Предсказываем вероятность оттока.
 
         Args:
             model_params (dict): Параметры для модели.
 
         Returns:
-            float — кредитный рейтинг
+            float — вероятность оттока от 0 до 1
         """
-        return self.model.predict(list(model_params.values()))
+        param_values_list = list(model_params.values())
+        return self.model.predict_proba(param_values_list)[1]
 
     def check_required_query_params(self, query_params: dict) -> bool:
         """Проверяем параметры запроса на наличие обязательного набора.
@@ -54,12 +56,12 @@ class FastApiHandler:
             query_params (dict): Параметры запроса.
 
         Returns:
-        bool: True — если есть нужные параметры, False — иначе
+            bool: True — если есть нужные параметры, False — иначе
         """
-        if "client_id" not in query_params or "model_params" not in query_params:
+        if "user_id" not in query_params or "model_params" not in query_params:
             return False
 
-        if not isinstance(query_params["client_id"], self.param_types["client_id"]):
+        if not isinstance(query_params["user_id"], self.param_types["user_id"]):
             return False
 
         if not isinstance(query_params["model_params"], self.param_types["model_params"]):
@@ -67,10 +69,10 @@ class FastApiHandler:
         return True
 
     def check_required_model_params(self, model_params: dict) -> bool:
-        """Проверяем параметры для получения предсказаний.
+        """Проверяем параметры пользователя на наличие обязательного набора.
 
         Args:
-            model_params (dict): Параметры для получения предсказаний моделью.
+            model_params (dict): Параметры пользователя для предсказания.
 
         Returns:
             bool: True — если есть нужные параметры, False — иначе
@@ -80,15 +82,14 @@ class FastApiHandler:
         return False
 
     def validate_params(self, params: dict) -> bool:
-        """Проверяем корректность параметров запроса и параметров модели.
+        """Разбираем запрос и проверяем его корректность.
 
         Args:
             params (dict): Словарь параметров запроса.
 
         Returns:
-             bool: True — если проверки пройдены, False — иначе
+            - **dict**: Cловарь со всеми параметрами запроса.
         """
-
         if self.check_required_query_params(params):
             print("All query params exist")
         else:
@@ -103,32 +104,69 @@ class FastApiHandler:
         return True
 
     def handle(self, params):
-        """Функция для обработки запросов API.
+        """Функция для обработки входящих запросов по API. Запрос состоит из параметров.
 
         Args:
             params (dict): Словарь параметров запроса.
 
         Returns:
-            dict: Словарь, содержащий результат выполнения запроса.
+            - **dict**: Словарь, содержащий результат выполнения запроса.
         """
         try:
-            # Валидируем запрос к API
+            # валидируем запрос к API
             if not self.validate_params(params):
                 print("Error while handling request")
                 response = {"Error": "Problem with parameters"}
             else:
                 model_params = params["model_params"]
-                client_id = params["client_id"]
+                user_id = params["user_id"]
                 print(
-                    f"Predicting for client_id: {client_id} and model_params:\n{model_params}")
-                # Получаем предсказания модели
-                predicted_rating = self.credit_rating_predict(model_params)
+                    f"Predicting for user_id: {user_id} and model_params:\n{model_params}")
+                # получаем предсказания модели
+                probability = self.churn_predict(model_params)
                 response = {
-                    "client_id": client_id,
-                    "predicted_credit_rating": predicted_rating
+                    "user_id": user_id,
+                    "probability": probability,
+                    "is_churn": int(probability > 0.5)
                 }
         except Exception as e:
             print(f"Error while handling request: {e}")
             return {"Error": "Problem with request"}
         else:
             return response
+
+
+if __name__ == "__main__":
+
+    # создаём тестовый запрос
+    test_params = {
+        "user_id": "123",
+        "model_params": {
+            'gender': 1.0,
+            'SeniorCitizen': 0.0,
+            'Partner': 0.0,
+            'Dependents': 0.0,
+            'Type': 0.5501916796819537,
+            'PaperlessBilling': 1.0,
+            'PaymentMethod': 0.2192247621752094,
+            'MonthlyCharges': 50.8,
+            'TotalCharges': 288.05,
+            'MultipleLines': 0.0,
+            'InternetService': 0.3437455629703251,
+            'OnlineSecurity': 0.0,
+            'OnlineBackup': 0.0,
+            'DeviceProtection': 0.0,
+            'TechSupport': 1.0,
+            'StreamingTV': 0.0,
+            'StreamingMovies': 0.0,
+            'days': 245.0,
+            'services': 2.0
+        }
+    }
+
+    # создаём обработчик запросов для API
+    handler = FastApiHandler()
+
+    # делаем тестовый запрос
+    response = handler.handle(test_params)
+    print(f"Response: {response}")
