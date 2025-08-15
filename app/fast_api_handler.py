@@ -1,6 +1,5 @@
 """Класс FastApiHandler, который обрабатывает запросы API."""
 
-# импортируем класс модели
 from catboost import CatBoostRegressor
 
 
@@ -16,20 +15,20 @@ class FastApiHandler:
             "model_params": dict
         }
 
-        # Cписок необходимых параметров модели
+        # список необходимых параметров модели
         self.required_model_params = [
             "gender", "Type", "PaperlessBilling", "PaymentMethod",
             "MonthlyCharges", "TotalCharges"
         ]
 
-        self.model_path = "../models/catboost_credit_model.bin"
-        self.load_credit_model(model_path=self.model_path)
+        model_path = "../models/catboost_credit_model.bin"
+        self.load_credit_model(model_path=model_path)
 
     def load_credit_model(self, model_path: str):
         """Загружаем обученную модель предсказания кредитного рейтинга.
 
             Args:
-        model_path (str): Путь до модели.
+            model_path (str): Путь до модели.
         """
         try:
             self.model = CatBoostRegressor()
@@ -52,26 +51,26 @@ class FastApiHandler:
         """Проверяем параметры запроса на наличие обязательного набора.
 
         Args:
-            params (dict): Параметры запроса.
+            query_params (dict): Параметры запроса.
 
         Returns:
-            bool: True — если есть нужные параметры, False — иначе
+        bool: True — если есть нужные параметры, False — иначе
         """
         if "client_id" not in query_params or "model_params" not in query_params:
             return False
 
-        if not isinstance(query_params["client_id"], str):
+        if not isinstance(query_params["client_id"], self.param_types["client_id"]):
             return False
 
-        if not isinstance(query_params["model_params"], dict):
+        if not isinstance(query_params["model_params"], self.param_types["model_params"]):
             return False
         return True
 
     def check_required_model_params(self, model_params: dict) -> bool:
-        """Проверяем параметры пользователя на наличие обязательного набора.
+        """Проверяем параметры для получения предсказаний.
 
         Args:
-            model_params (dict): Параметры пользователя для предсказания.
+            model_params (dict): Параметры для получения предсказаний моделью.
 
         Returns:
             bool: True — если есть нужные параметры, False — иначе
@@ -89,6 +88,7 @@ class FastApiHandler:
         Returns:
              bool: True — если проверки пройдены, False — иначе
         """
+
         if self.check_required_query_params(params):
             print("All query params exist")
         else:
@@ -112,22 +112,23 @@ class FastApiHandler:
             dict: Словарь, содержащий результат выполнения запроса.
         """
         try:
-            # валидируем запрос к API
+            # Валидируем запрос к API
             if not self.validate_params(params):
                 print("Error while handling request")
                 response = {"Error": "Problem with parameters"}
             else:
                 model_params = params["model_params"]
                 client_id = params["client_id"]
-                print(f"Predicting for client_id: {client_id} and model_params:\n{model_params}")
-                # получаем предсказания модели
+                print(
+                    f"Predicting for client_id: {client_id} and model_params:\n{model_params}")
+                # Получаем предсказания модели
                 predicted_rating = self.credit_rating_predict(model_params)
                 response = {
-                    "client_id": client_id, 
+                    "client_id": client_id,
                     "predicted_credit_rating": predicted_rating
                 }
         except Exception as e:
             print(f"Error while handling request: {e}")
             return {"Error": "Problem with request"}
         else:
-            return response 
+            return response
