@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+LABEL author=${LABEL}
+
+COPY . ./counter_app
+WORKDIR counter_app 
+RUN pip3 install -r requirements_counter.txt
+
+EXPOSE ${COUNTER_APP_PORT}
+
+CMD uvicorn counter_app.main:app --port ${COUNTER_APP_PORT} --host 0.0.0.0

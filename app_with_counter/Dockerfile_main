@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+LABEL author=${LABEL}
+
+
+COPY . ./app_with_counter
+WORKDIR app_with_counter 
+
+RUN pip3 install -r requirements_main.txt
+#VOLUME /speeches
+
+EXPOSE ${MAIN_APP_PORT}
+
+CMD uvicorn main_app.main:app --port ${MAIN_APP_PORT} --host 0.0.0.0
