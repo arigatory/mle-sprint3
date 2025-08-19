@@ -1,0 +1,12 @@
+services:
+  main-app:
+    env_file:
+      - ./.env
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_VM_PORT}:${APP_DOCKER_PORT}"
+    volumes:
+      - type: bind
+        source: ./models
+        target: /churn_app/models

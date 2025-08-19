@@ -1,0 +1,27 @@
+services:
+  main-app:  
+    env_file:
+      - ./.env
+    build:
+      dockerfile: Dockerfile_main
+    ports:
+      - "${MAIN_APP_PORT_VM}:${MAIN_APP_PORT}"
+    #
+    # указываем тома
+    volumes:
+        # тип тома 
+      - type: bind
+        # директория на ВМ
+        source: ./speeches
+        # директория в контейнере
+        target: /app_with_counter/speeches
+        #
+
+  counter-app:
+    env_file:
+      - ./.env
+    build:
+      dockerfile: Dockerfile_counter
+    hostname: counter
+    ports:
+      - "${COUNTER_APP_PORT_VM}:${COUNTER_APP_PORT}"

@@ -21,7 +21,7 @@ def cow_answer(input_: str):
     
     greetings_choosen = random.choice(greetings_variants)
     answer = cowsay(greetings_choosen+' '+input_) + '\n'
-    url = 'http://localhost:4649/count'
+    url = 'http://counter:1602/count'
     ret = requests.get(url)
     print(ret.json())
     return answer

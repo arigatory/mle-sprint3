@@ -1,7 +1,7 @@
 """Приложение Fast API для модели предсказания кредитного рейтинга."""
 
 from fastapi import FastAPI, Body
-from .fast_api_handler import FastApiHandler
+from fast_api_handler import FastApiHandler
 
 # создаём приложение FastAPI
 app = FastAPI()
