@@ -1,0 +1,11 @@
+services:
+  main-app:  
+    #используем файл с переменными среды
+    env_file:
+      - ./.env
+    # собираем образ с помощью Dockerfile
+    build:
+      dockerfile: Dockerfile_main
+    # перенаправялем порты
+    ports:
+      - "${MAIN_APP_PORT}:${MAIN_APP_PORT}"
